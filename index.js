@@ -250,8 +250,6 @@ export default e => {
     ${THREE.ShaderChunk.common}
       precision highp float;
       precision highp int;
-      ${THREE.ShaderChunk.logdepthbuf_pars_vertex}
-      
 
       uniform sampler2D normalMap;
       varying vec3 vPosition;
@@ -269,8 +267,6 @@ export default e => {
         vNormal = normalize( texture2D( normalMap, vUv ).rgb );
         gl_Position = projectionMatrix * mvPosition;
         eyeVec = vViewPosition.xyz;
-
-        ${THREE.ShaderChunk.logdepthbuf_vertex}
       }
     `,
     fragmentShader: `\
@@ -287,8 +283,6 @@ export default e => {
       varying vec3 vViewPosition;
       varying vec3 vNormal;
       varying vec3 eyeVec;
-
-      ${THREE.ShaderChunk.logdepthbuf_pars_fragment}
 
         vec2 parallaxMap( in vec3 V ) {
           float numLayers = mix( parallaxMaxLayers, parallaxMinLayers, abs( dot( vec3( 0.0, 0.0, 1.0 ), V ) ) );
@@ -328,6 +322,11 @@ export default e => {
       const vec3 lineColor1 = vec3(${new THREE.Color(0xef5350).toArray().join(', ')});
       const vec3 lineColor2 = vec3(${new THREE.Color(0xff7043).toArray().join(', ')});
       const vec3 sunDirection = normalize(vec3(-1, -2, -3));
+
+      vec4 sRGBToLinear( in vec4 value ) {
+        return vec4( mix( pow( value.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), value.rgb * 0.0773993808, vec3( lessThanEqual( value.rgb, vec3( 0.04045 ) ) ) ), value.a );
+      }
+
       void main() {
         vec3 normal = normalize(-cross(dFdx(eyeVec.xyz), dFdy(eyeVec.xyz)));
         vec2 mapUv = perturbUv( -vViewPosition, normal, normalize( vViewPosition ) );
@@ -338,7 +337,8 @@ export default e => {
         gl_FragColor = vec4((c1.rgb + c2 * 0.3 * min(gl_FragCoord.z/gl_FragCoord.w/50.0, 1.0)) * (0.5 + fLight), c1.a);
         gl_FragColor = sRGBToLinear(gl_FragColor);
 
-        ${THREE.ShaderChunk.logdepthbuf_fragment}
+        #include <tonemapping_fragment>
+			  #include <encodings_fragment>
       }
     `,
     
